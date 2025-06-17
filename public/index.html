@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crisp Conversation Exporter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .loading-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 2rem;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #333;
+        }
+        .btn-export {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            border: none;
+            padding: 12px 30px;
+            font-weight: bold;
+        }
+        .btn-export:hover {
+            background: linear-gradient(45deg, #0056b3, #004085);
+        }
+        .alert {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5>Exporting Conversations...</h5>
+            <p class="text-muted">This may take a few minutes depending on the number of conversations.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="form-container bg-white">
+            <div class="header">
+                <h1><i class="fas fa-download me-2"></i>Crisp Conversation Exporter</h1>
+                <p class="text-muted">Export all your Crisp conversations to CSV format</p>
+
+                <div class="alert alert-info mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Crisp now uses Marketplace tokens. <a href="#setup-guide">See setup guide below</a> for step-by-step instructions.
+                </div>
+            </div>
+
+            <form id="exportForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="crispIdentifier" class="form-label">
+                            <i class="fas fa-key me-1"></i>Token Identifier
+                        </label>
+                        <input type="text" class="form-control" id="crispIdentifier" required
+                               placeholder="Enter your Token Identifier">
+                        <div class="form-text">From Crisp Marketplace → Your Plugin → Tokens</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="crispKey" class="form-label">
+                            <i class="fas fa-lock me-1"></i>Token Key
+                        </label>
+                        <input type="password" class="form-control" id="crispKey" required
+                               placeholder="Enter your Token Key">
+                        <div class="form-text">From Crisp Marketplace → Your Plugin → Tokens</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="websiteId" class="form-label">
+                        <i class="fas fa-globe me-1"></i>Website ID
+                    </label>
+                    <input type="text" class="form-control" id="websiteId" required 
+                           placeholder="Enter your Crisp Website ID">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="startDate" class="form-label">
+                            <i class="fas fa-calendar me-1"></i>Start Date (Optional)
+                        </label>
+                        <input type="date" class="form-control" id="startDate">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="endDate" class="form-label">
+                            <i class="fas fa-calendar me-1"></i>End Date (Optional)
+                        </label>
+                        <input type="date" class="form-control" id="endDate">
+                    </div>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-export">
+                        <i class="fas fa-download me-2"></i>Export Conversations
+                    </button>
+                </div>
+            </form>
+
+            <div id="alertContainer"></div>
+        </div>
+
+        <!-- Setup Guide Section -->
+        <div class="form-container bg-white mt-4" id="setup-guide">
+            <h3><i class="fas fa-cog me-2"></i>Setup Guide - New Crisp Authentication (2024)</h3>
+
+            <div class="alert alert-warning">
+                <h6><i class="fas fa-exclamation-triangle me-2"></i>Important Update</h6>
+                <p class="mb-0">Crisp has updated their API authentication method. You now need to create a plugin in the Crisp Marketplace to get your tokens.</p>
+            </div>
+
+            <h5>Step 1: Create a Crisp Marketplace Account</h5>
+            <ol>
+                <li>Go to <a href="https://marketplace.crisp.chat/" target="_blank"><strong>Crisp Marketplace</strong></a></li>
+                <li><strong>Sign in</strong> or create an account (this is different from your main Crisp account)</li>
+            </ol>
+
+            <h5>Step 2: Create a Plugin</h5>
+            <ol>
+                <li>Once logged in, go to <strong>"Plugins"</strong></li>
+                <li>Click <strong>"New Plugin"</strong> button</li>
+                <li>Select <strong>"Private"</strong> plugin type</li>
+                <li>Name it something like <strong>"Conversation Exporter"</strong></li>
+                <li>Click <strong>"Create"</strong></li>
+            </ol>
+
+            <h5>Step 3: Get Your Tokens</h5>
+            <ol>
+                <li>In your plugin, go to the <strong>"Tokens"</strong> tab</li>
+                <li>Scroll down to <strong>"Development Token"</strong> section</li>
+                <li>Copy the <strong>Token Identifier</strong> and <strong>Token Key</strong></li>
+            </ol>
+
+            <h5>Step 4: Add Trusted Workspace</h5>
+            <ol>
+                <li>Go to <a href="https://marketplace.crisp.chat/settings/" target="_blank"><strong>Marketplace Settings</strong></a></li>
+                <li>Click <strong>"Add Trusted Workspace"</strong></li>
+                <li>Enter your <strong>Website ID</strong> (see step 5 below)</li>
+                <li>Enter your main Crisp account credentials</li>
+                <li>Submit your 2FA token if enabled</li>
+            </ol>
+
+            <h5>Step 5: Find Your Website ID</h5>
+            <ol>
+                <li>Go to your main <a href="https://app.crisp.chat/" target="_blank"><strong>Crisp Dashboard</strong></a></li>
+                <li>Look at the URL when viewing your inbox: <code>https://app.crisp.chat/website/YOUR-WEBSITE-ID/</code></li>
+                <li>The long string after <code>/website/</code> is your <strong>Website ID</strong></li>
+                <li>Alternative: Go to Settings → Website Settings → General to find it</li>
+            </ol>
+
+            <div class="alert alert-success">
+                <h6><i class="fas fa-check-circle me-2"></i>You're Ready!</h6>
+                <p class="mb-0">Once you have your <strong>Token Identifier</strong>, <strong>Token Key</strong>, and <strong>Website ID</strong>, you can use the form above to export your conversations!</p>
+            </div>
+
+            <h5>Troubleshooting</h5>
+            <div class="accordion" id="troubleshootingAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                            <i class="fas fa-question-circle me-2"></i>Can't find the Marketplace or Plugins section?
+                        </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                        <div class="accordion-body">
+                            Make sure you're on <strong>marketplace.crisp.chat</strong> (not app.crisp.chat). This is a separate platform for developers and plugin creators.
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                            <i class="fas fa-question-circle me-2"></i>Getting "invalid_session" error?
+                        </button>
+                    </h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                        <div class="accordion-body">
+                            <ul>
+                                <li>Double-check your Token Identifier and Token Key</li>
+                                <li>Make sure you've added your Website ID as a Trusted Workspace</li>
+                                <li>Verify you have Owner role in your Crisp workspace</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                            <i class="fas fa-question-circle me-2"></i>Need higher quotas or production use?
+                        </button>
+                    </h2>
+                    <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                        <div class="accordion-body">
+                            Development tokens have lower quotas. For production use or higher limits, you'll need to request a Production Token through the Crisp Marketplace.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
