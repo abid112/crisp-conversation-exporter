@@ -123,14 +123,30 @@ class CrispService {
                 return this.generateEmptyCSV();
             }
 
+            // Limit sessions for Vercel timeout (max 50 conversations per export)
+            const maxSessions = 50;
+            const limitedSessions = sessions.slice(0, maxSessions);
+            
+            if (sessions.length > maxSessions) {
+                console.log(`Limiting export to ${maxSessions} conversations due to server timeout constraints. Total available: ${sessions.length}`);
+            }
+
             const conversationData = [];
             let processedCount = 0;
+            const startTime = Date.now();
+            const maxProcessingTime = 45000; // 45 seconds max (leaving 5s buffer for Vercel)
 
             // Process each conversation session
-            for (const session of sessions) {
+            for (const session of limitedSessions) {
                 try {
+                    // Check if we're approaching timeout
+                    if (Date.now() - startTime > maxProcessingTime) {
+                        console.log(`Approaching timeout limit. Processed ${processedCount} conversations.`);
+                        break;
+                    }
+
                     processedCount++;
-                    console.log(`Processing conversation ${processedCount}/${sessions.length}: ${session.session_id}`);
+                    console.log(`Processing conversation ${processedCount}/${limitedSessions.length}: ${session.session_id}`);
 
                     // Get conversation metadata and messages in parallel
                     const [meta, messages] = await Promise.all([
@@ -173,9 +189,9 @@ class CrispService {
                         });
                     }
 
-                    // Add small delay to avoid rate limiting
-                    if (processedCount % 10 === 0) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
+                    // Add small delay to avoid rate limiting (reduced for faster processing)
+                    if (processedCount % 5 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 50));
                     }
 
                 } catch (error) {

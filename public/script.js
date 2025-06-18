@@ -3,119 +3,137 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingOverlay = document.getElementById('loadingOverlay');
     const alertContainer = document.getElementById('alertContainer');
 
+    function showAlert(message, type = 'danger') {
+        alertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+    }
+
+    function showLoading() {
+        loadingOverlay.style.display = 'flex';
+    }
+
+    function hideLoading() {
+        loadingOverlay.style.display = 'none';
+    }
+
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         // Clear previous alerts
         alertContainer.innerHTML = '';
         
-        // Get form data
-        const formData = {
-            crispIdentifier: document.getElementById('crispIdentifier').value.trim(),
-            crispKey: document.getElementById('crispKey').value.trim(),
-            websiteId: document.getElementById('websiteId').value.trim(),
-            startDate: document.getElementById('startDate').value,
-            endDate: document.getElementById('endDate').value
-        };
-
-        // Validate required fields
-        if (!formData.crispIdentifier || !formData.crispKey || !formData.websiteId) {
-            showAlert('Please fill in all required fields.', 'danger');
-            return;
-        }
-
-        // Validate date range
-        if (formData.startDate && formData.endDate) {
-            const start = new Date(formData.startDate);
-            const end = new Date(formData.endDate);
-            if (start > end) {
-                showAlert('Start date must be before end date.', 'danger');
-                return;
-            }
-        }
+        // Show loading overlay
+        showLoading();
 
         try {
-            // Show loading overlay
-            showLoading(true);
+            const formData = {
+                crispIdentifier: document.getElementById('crispIdentifier').value.trim(),
+                crispKey: document.getElementById('crispKey').value.trim(),
+                websiteId: document.getElementById('websiteId').value.trim(),
+                startDate: document.getElementById('startDate').value || null,
+                endDate: document.getElementById('endDate').value || null
+            };
 
-            // Make API request
+            // Validate form data
+            if (!formData.crispIdentifier || !formData.crispKey || !formData.websiteId) {
+                throw new Error('Please fill in all required fields');
+            }
+
+            // Validate date range if both dates are provided
+            if (formData.startDate && formData.endDate && formData.startDate > formData.endDate) {
+                throw new Error('Start date cannot be after end date');
+            }
+
             const response = await fetch('/api/export-conversations', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-            }
-
-            // Check if response is CSV
+            // Check if response is JSON (error) or CSV (success)
             const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('text/csv')) {
-                throw new Error('Invalid response format. Expected CSV file.');
+            
+            if (!response.ok) {
+                // Try to parse error as JSON
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Export failed');
+                } catch (parseError) {
+                    // If JSON parsing fails, it might be an HTML error page
+                    const text = await response.text();
+                    if (text.includes('The page') || text.includes('<!DOCTYPE html>')) {
+                        throw new Error('Server timeout or error. Please try again with a smaller date range or fewer conversations.');
+                    } else {
+                        throw new Error(`Export failed: ${response.status} ${response.statusText}`);
+                    }
+                }
             }
 
-            // Get the blob and create download
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            
-            // Create download link
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            
-            // Generate filename with timestamp
-            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-            a.download = `crisp-conversations-${timestamp}.csv`;
-            
-            document.body.appendChild(a);
-            a.click();
-            
-            // Cleanup
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            showAlert('Conversations exported successfully!', 'success');
+            if (contentType && contentType.includes('text/csv')) {
+                // Success - download CSV
+                const contentDisposition = response.headers.get('Content-Disposition');
+                const filename = contentDisposition
+                    ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                    : 'crisp-conversations.csv';
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showAlert('Export completed successfully! Your CSV file has been downloaded.', 'success');
+            } else {
+                throw new Error('Unexpected response format');
+            }
 
         } catch (error) {
             console.error('Export error:', error);
-            showAlert(`Export failed: ${error.message}`, 'danger');
+            showAlert(error.message);
         } finally {
-            // Hide loading overlay
-            showLoading(false);
+            hideLoading();
         }
     });
 
-    function showLoading(show) {
-        loadingOverlay.style.display = show ? 'flex' : 'none';
-    }
+    // Add some helpful validation
+    const crispIdentifierInput = document.getElementById('crispIdentifier');
+    const crispKeyInput = document.getElementById('crispKey');
+    const websiteIdInput = document.getElementById('websiteId');
 
-    function showAlert(message, type) {
-        const alertHtml = `
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        `;
-        alertContainer.innerHTML = alertHtml;
-        
-        // Auto-dismiss success alerts after 5 seconds
-        if (type === 'success') {
-            setTimeout(() => {
-                const alert = alertContainer.querySelector('.alert');
-                if (alert) {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }
-            }, 5000);
+    // Add input validation hints
+    crispIdentifierInput.addEventListener('input', function() {
+        if (this.value.length > 0 && this.value.length < 10) {
+            this.classList.add('is-invalid');
+        } else {
+            this.classList.remove('is-invalid');
         }
-    }
+    });
 
-    // Set default end date to today
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('endDate').value = today;
+    crispKeyInput.addEventListener('input', function() {
+        if (this.value.length > 0 && this.value.length < 20) {
+            this.classList.add('is-invalid');
+        } else {
+            this.classList.remove('is-invalid');
+        }
+    });
+
+    websiteIdInput.addEventListener('input', function() {
+        if (this.value.length > 0 && this.value.length < 20) {
+            this.classList.add('is-invalid');
+        } else {
+            this.classList.remove('is-invalid');
+        }
+    });
 });
